@@ -1,0 +1,39 @@
+include_stdsys();
+include_stdio();
+
+fn main() -> bool {
+    var db = sqlite_open(":memory:");
+    if (!sqlite_exec(db, "CREATE TABLE test (id INT, name TEXT);")) {
+        return false;
+    }
+    if (!sqlite_exec(db, "INSERT INTO test (id, name) VALUES (1, 'Alice');")) {
+        return false;
+    }
+    var stmt = sqlite_prepare(db, "SELECT id, name FROM test;");
+    var row_available = sqlite_step(stmt);
+    var id = sqlite_column(stmt, 0);
+    var name = sqlite_column(stmt, 1);
+    if (id != 1) {
+        return false;
+    }
+    if (name != "Alice") {
+        return false;
+    }
+    sqlite_finalize(stmt);
+    sqlite_close(db);
+    return true;
+}
+
+var start = time();
+var ret = main();
+var end = time();
+var time = (end - start) / 1000;
+var complText = "Unsucessfully";
+
+if (ret)
+    complText = "Successfully";
+
+printf("Completed %s in %fs", complText, time);
+
+shutdown(ret);
+

@@ -1,0 +1,338 @@
+.TH PHASOR_SQLITE 3 "January 2026" "Phasor Programming Language" "Phasor SQLite Bindings"
+.SH NAME
+phasor_sqlite \- SQLite database interface for Phasor
+.SH SYNOPSIS
+.nf
+.B sqlite_open(path)
+.B sqlite_close(db_handle)
+.B sqlite_exec(db_handle, sql)
+.B sqlite_prepare(db_handle, sql)
+.B sqlite_step(stmt_handle)
+.B sqlite_column(stmt_handle, column_index)
+.B sqlite_finalize(stmt_handle)
+.B sqlite_free_string(string_handle)
+.fi
+.SH DESCRIPTION
+The Phasor SQLite plugin provides native bindings to the SQLite database engine, enabling Phasor scripts to create, query, and manage SQLite databases. The plugin uses a handle-based system for managing database connections and prepared statements.
+.PP
+Database and statement handles are integers that reference internal resources managed by the plugin. Applications must properly close databases and finalize statements to prevent resource leaks.
+.SH DATABASE FUNCTIONS
+.TP
+.BR sqlite_open (path)
+Open or create an SQLite database file.
+.RS
+.PP
+.B Arguments:
+.RS
+.IP \fBpath\fR 12
+Path to the database file. If the file does not exist, SQLite will create it
+.RE
+.PP
+.B Returns:
+Integer database handle on success, or null on failure
+.RE
+.PP
+.TP
+.BR sqlite_close (db_handle)
+Close an open database connection.
+.RS
+.PP
+.B Arguments:
+.RS
+.IP \fBdb_handle\fR 12
+Database handle returned by
+.B sqlite_open()
+.RE
+.PP
+.B Returns:
+Boolean true if database was closed successfully, false if handle was invalid
+.PP
+.B Notes:
+Automatically releases the database handle from the internal handle table
+.RE
+.PP
+.TP
+.BR sqlite_exec (db_handle, sql)
+Execute a SQL statement that does not return data (e.g., CREATE, INSERT, UPDATE, DELETE).
+.RS
+.PP
+.B Arguments:
+.RS
+.IP \fBdb_handle\fR 12
+Database handle
+.IP \fBsql\fR 12
+SQL statement to execute
+.RE
+.PP
+.B Returns:
+Boolean true on success, false on failure
+.PP
+.B Notes:
+This function is suitable for DDL and DML statements that do not return result sets. For queries that return data, use
+.B sqlite_prepare()
+and
+.B sqlite_step()
+instead
+.RE
+.SH PREPARED STATEMENT FUNCTIONS
+.TP
+.BR sqlite_prepare (db_handle, sql)
+Prepare a SQL statement for execution.
+.RS
+.PP
+.B Arguments:
+.RS
+.IP \fBdb_handle\fR 12
+Database handle
+.IP \fBsql\fR 12
+SQL statement to prepare
+.RE
+.PP
+.B Returns:
+Integer statement handle on success, or null on failure
+.PP
+.B Notes:
+Prepared statements must be finalized with
+.B sqlite_finalize()
+after use to prevent resource leaks
+.RE
+.PP
+.TP
+.BR sqlite_step (stmt_handle)
+Execute one step of a prepared statement.
+.RS
+.PP
+.B Arguments:
+.RS
+.IP \fBstmt_handle\fR 12
+Statement handle returned by
+.B sqlite_prepare()
+.RE
+.PP
+.B Returns:
+Boolean true if a row is available (SQLITE_ROW), false if execution is complete (SQLITE_DONE), or null on error
+.PP
+.B Notes:
+Call repeatedly to iterate through all result rows. When true is returned, use
+.B sqlite_column()
+to retrieve column values from the current row
+.RE
+.PP
+.TP
+.BR sqlite_column (stmt_handle, column_index)
+Retrieve a column value from the current row.
+.RS
+.PP
+.B Arguments:
+.RS
+.IP \fBstmt_handle\fR 12
+Statement handle
+.IP \fBcolumn_index\fR 12
+Zero-based column index
+.RE
+.PP
+.B Returns:
+Column value with appropriate type (integer, float, string, or null), or null if column index is out of range or statement handle is invalid
+.PP
+.B Notes:
+For string values, the plugin stores the string internally and returns a pointer to it. The string remains valid until the next call to
+.B sqlite_step()
+or
+.B sqlite_finalize()
+.RE
+.PP
+.TP
+.BR sqlite_finalize (stmt_handle)
+Finalize a prepared statement and release its resources.
+.RS
+.PP
+.B Arguments:
+.RS
+.IP \fBstmt_handle\fR 12
+Statement handle to finalize
+.RE
+.PP
+.B Returns:
+Boolean true if statement was finalized successfully, false if handle was invalid
+.PP
+.B Notes:
+Always call this function after finishing with a prepared statement. Automatically releases the statement handle from the internal handle table
+.RE
+.SH UTILITY FUNCTIONS
+.TP
+.BR sqlite_free_string (string_handle)
+Free a string stored in the internal string table.
+.RS
+.PP
+.B Arguments:
+.RS
+.IP \fBstring_handle\fR 12
+String handle to free
+.RE
+.PP
+.B Returns:
+Null value
+.PP
+.B Notes:
+This function is primarily for internal memory management and typically does not need to be called by user code
+.RE
+.SH EXAMPLES
+.B Opening and Closing a Database
+.PP
+.nf
+.RS
+// Open database
+var db = sqlite_open("mydata.db");
+if (db == null) {
+    puts("Failed to open database");
+    return;
+}
+
+// Use database...
+
+// Close database
+sqlite_close(db);
+.RE
+.fi
+.PP
+.B Creating a Table
+.PP
+.nf
+.RS
+var db = sqlite_open("users.db");
+
+var sql = "CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    age INTEGER
+)";
+
+if (sqlite_exec(db, sql)) {
+    puts("Table created successfully");
+} else {
+    puts("Failed to create table");
+}
+
+sqlite_close(db);
+.RE
+.fi
+.PP
+.B Inserting Data
+.PP
+.nf
+.RS
+var db = sqlite_open("users.db");
+
+var sql = "INSERT INTO users (name, age) VALUES ('Alice', 30)";
+sqlite_exec(db, sql);
+
+sql = "INSERT INTO users (name, age) VALUES ('Bob', 25)";
+sqlite_exec(db, sql);
+
+sqlite_close(db);
+.RE
+.fi
+.PP
+.B Querying Data
+.PP
+.nf
+.RS
+var db = sqlite_open("users.db");
+
+var stmt = sqlite_prepare(db, "SELECT id, name, age FROM users");
+if (stmt == null) {
+    puts("Failed to prepare statement");
+    sqlite_close(db);
+    return;
+}
+
+// Iterate through results
+while (sqlite_step(stmt)) {
+    var id = sqlite_column(stmt, 0);
+    var name = sqlite_column(stmt, 1);
+    var age = sqlite_column(stmt, 2);
+    
+    putf("ID: %d, Name: %s, Age: %d", id, name, age);
+}
+
+sqlite_finalize(stmt);
+sqlite_close(db);
+.RE
+.fi
+.PP
+.B Complete CRUD Example
+.PP
+.nf
+.RS
+var db = sqlite_open("inventory.db");
+
+// Create
+sqlite_exec(db, "CREATE TABLE items (id INTEGER PRIMARY KEY, 
+                 name TEXT, quantity INTEGER)");
+
+// Insert
+sqlite_exec(db, "INSERT INTO items (name, quantity) 
+                 VALUES ('Widget', 100)");
+sqlite_exec(db, "INSERT INTO items (name, quantity) 
+                 VALUES ('Gadget', 50)");
+
+// Read
+var stmt = sqlite_prepare(db, "SELECT * FROM items WHERE quantity > 25");
+while (sqlite_step(stmt)) {
+    putf("%s: %d", sqlite_column(stmt, 1), sqlite_column(stmt, 2));
+}
+sqlite_finalize(stmt);
+
+// Update
+sqlite_exec(db, "UPDATE items SET quantity = 75 WHERE name = 'Gadget'");
+
+// Delete
+sqlite_exec(db, "DELETE FROM items WHERE quantity < 60");
+
+sqlite_close(db);
+.RE
+.fi
+.SH NOTES
+.IP \(bu 2
+All database and statement handles are integers managed by internal hash tables
+.IP \(bu 2
+Column indices in
+.B sqlite_column()
+are zero-based
+.IP \(bu 2
+The plugin automatically handles type conversion between SQLite types and Phasor types
+.IP \(bu 2
+Strings returned by
+.B sqlite_column()
+are stored in an internal string table and remain valid until the statement is finalized
+.IP \(bu 2
+Always finalize prepared statements and close databases to prevent resource leaks
+.IP \(bu 2
+The plugin is thread-safe, using mutexes to protect internal data structures
+.IP \(bu 2
+BLOB data types are not currently supported
+.IP \(bu 2
+Parameter binding is not currently supported; use string concatenation to build dynamic queries (be aware of SQL injection risks)
+.SH ERRORS
+Functions return null or false on error. Common error conditions include:
+.IP \(bu 2
+Invalid file path or permissions when opening database
+.IP \(bu 2
+SQL syntax errors in
+.B sqlite_exec()
+or
+.B sqlite_prepare()
+.IP \(bu 2
+Invalid database or statement handles
+.IP \(bu 2
+Out-of-range column indices in
+.B sqlite_column()
+.SH SEE ALSO
+.BR phasor-ffi (7),
+.BR sqlite3 (1)
+.PP
+SQLite documentation: https://www.sqlite.org/docs.html
+.SH AUTHOR
+Daniel McGuire
+.SH COPYRIGHT
+Copyright \(co 2026 Daniel McGuire
