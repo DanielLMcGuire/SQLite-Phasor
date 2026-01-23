@@ -18,3 +18,4 @@ endif()
 install(TARGETS sqlite-phs
         LIBRARY DESTINATION "${PLUGIN_INSTALL_DIR}"
         RUNTIME DESTINATION "${PLUGIN_INSTALL_DIR}"
+)
