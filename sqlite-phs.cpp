@@ -7,7 +7,7 @@
 
 static std::unordered_map<int, sqlite3*> db_table;
 static std::unordered_map<int, sqlite3_stmt*> stmt_table;
-static std::unordered_map<int, std::string> string_table;
+static std::unordered_map<int, char*> string_table;
 static int next_db_handle = 1;
 static int next_stmt_handle = 1;
 static int next_string_handle = 1;
@@ -27,22 +27,30 @@ sqlite3_stmt* get_stmt(int handle) {
     return it != stmt_table.end() ? it->second : nullptr;
 }
 
-int store_string(const std::string& s) {
+int store_string(const char* s) {
     std::lock_guard<std::mutex> lock(string_mutex);
+    size_t len = strlen(s);
+    char* copy = (char*)malloc(len + 1);
+    memcpy(copy, s, len + 1);
+
     int handle = next_string_handle++;
-    string_table[handle] = s;
+    string_table[handle] = copy;
     return handle;
 }
 
 const char* get_string(int handle) {
     std::lock_guard<std::mutex> lock(string_mutex);
     auto it = string_table.find(handle);
-    return it != string_table.end() ? it->second.c_str() : nullptr;
+    return it != string_table.end() ? it->second : nullptr;
 }
 
 void free_string(int handle) {
     std::lock_guard<std::mutex> lock(string_mutex);
-    string_table.erase(handle);
+    auto it = string_table.find(handle);
+    if (it != string_table.end()) {
+        free(it->second);
+        string_table.erase(it);
+    }
 }
 
 PhasorValue sqlite_open(PhasorVM* vm, int argc, const PhasorValue* argv) {
@@ -135,10 +143,13 @@ PhasorValue sqlite_column(PhasorVM* vm, int argc, const PhasorValue* argv) {
     case SQLITE_INTEGER: return phasor_make_int(sqlite3_column_int(stmt, col_index));
     case SQLITE_FLOAT:   return phasor_make_float(sqlite3_column_double(stmt, col_index));
     case SQLITE_TEXT: {
-        std::string s(reinterpret_cast<const char*>(sqlite3_column_text(stmt, col_index)));
-        int str_handle = store_string(s);
+        const unsigned char* text = sqlite3_column_text(stmt, col_index);
+        if (!text) return phasor_make_null();
+    
+        int str_handle = store_string((const char*)text);
         return phasor_make_string(get_string(str_handle));
     }
+
     case SQLITE_NULL: return phasor_make_null();
     default: return phasor_make_null();
     }
