@@ -1,6 +1,7 @@
 #define PHASOR_FFI_BUILD_DLL
 #include <PhasorFFI.hpp>
 #include "sqlite/sqlite3.h"
+#include <cstring>
 #include <string>
 #include <unordered_map>
 #include <mutex>
