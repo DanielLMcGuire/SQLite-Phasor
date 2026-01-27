@@ -51,6 +51,10 @@ while (sqlite_step(stmt)) {
 sqlite_finalize(stmt);
 sqlite_close(db);
 ```
+See the man page for info 
+```bash
+man man3/PHASOR_SQLITE.3
+```
 
 ## API Reference
 
