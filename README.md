@@ -10,7 +10,7 @@ This plugin provides the C style SQLite3 interface for Phasor.
 
 ### Prerequisites
 
-- Phasor 2.1.0 or later *(not out yet, compile from source)*
+- Phasor 2.1.0 or later
 - C++17 compatible compiler
 
 ### Building
