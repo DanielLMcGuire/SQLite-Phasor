@@ -247,41 +247,6 @@ sqlite_finalize(stmt);  // Always finalize statements
 sqlite_close(db);       // Always close databases
 ```
 
-### Error Handling
-
-```javascript
-var db = sqlite_open("data.db");
-if (db == null) {
-    puts("ERROR: Could not open database");
-    return;
-}
-
-var stmt = sqlite_prepare(db, "SELECT * FROM users");
-if (stmt == null) {
-    puts("ERROR: Could not prepare statement");
-    sqlite_close(db);
-    return;
-}
-
-// ... rest of code ...
-```
-
-### Avoid SQL Injection
-
-```javascript
-// WRONG, vulnerable to SQL injection
-var user_input = get_user_input();
-sqlite_exec(db, "SELECT * FROM users WHERE name = '" + user_input + "'");
-
-// GOOD, validate and sanitize input
-var safe_input = sanitize(user_input);
-if (is_valid_name(safe_input)) {
-    sqlite_exec(db, "SELECT * FROM users WHERE name = '" + safe_input + "'");
-}
-
-// Note: True prepared statement parameter binding is not yet supported
-```
-
 ## Limitations
 
 - **No parameter binding**: Prepared statements don't support `?` placeholders yet
