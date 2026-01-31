@@ -1,19 +1,20 @@
 pkgname=sqlite-Phasor
-pkgver=0.1.0
+pkgver=0.0.0
 pkgrel=1
 pkgdesc="SQLite Bindings for Phasor"
 arch=('x86_64')
 url="https://github.com/DanielLMcGuire/SQLite-Phasor"
 license=('MIT')
-depends=('cmake' 'ninja')
-makedepends=('git' 'gcc')
-source=("git+https://github.com/DanielLMcGuire/SQLite-Phasor.git")
-sha256sums=('SKIP')
+makedepends=('cmake' 'ninja' 'git' 'gcc')
+source=()
+sha256sums=()
 
 pkgver() {
-    cd "$srcdir/SQLite-Phasor"
+    cd "$srcdir"
+
     tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "0.0.0")
     commits_since_tag=$(git rev-list "${tag}"..HEAD --count 2>/dev/null || echo 0)
+
     if [ "$commits_since_tag" -eq 0 ]; then
         echo "$tag"
     else
@@ -21,22 +22,23 @@ pkgver() {
     fi
 }
 
-
 build() {
-	cd "$srcdir/SQLite-Phasor"
-    cmake -S "$srcdir/SQLite-Phasor" -B "$srcdir/SQLite-Phasor/build" \
-          -G Ninja \
-          -DCMAKE_INSTALL_PREFIX=/opt/Phasor
-    cmake --build "$srcdir/SQLite-Phasor/build"
+    cd "$srcdir"
+
+    cmake -S . -B build \
+        -G Ninja \
+        -DCMAKE_INSTALL_PREFIX=/opt/Phasor
+
+    cmake --build build
 }
 
 package() {
-    cd "$srcdir/SQLite-Phasor/build"
+    cd "$srcdir/build"
     DESTDIR="$pkgdir" cmake --install .
 
-    src="$srcdir/SQLite-Phasor/man3"
+    src="$srcdir/man3"
     dest="$pkgdir/usr/share/man/man3"
-    
+
     if [ -d "$src" ]; then
         mkdir -p "$dest"
         for file in "$src"/*.3; do
@@ -44,3 +46,4 @@ package() {
         done
     fi
 }
+
